@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CaseBot Dashboard</title>
+  <style>
+    /* ── Reset & base ──────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #09090f;
+      --bg2:      #10101a;
+      --bg3:      #18182a;
+      --bg4:      #20203a;
+      --border:   #2a2a48;
+      --border2:  #3a3a5c;
+      --text:     #d8d8f0;
+      --text2:    #6868a0;
+      --text3:    #4848780;
+      --green:    #00e676;
+      --yellow:   #ffc107;
+      --red:      #ff4560;
+      --blue:     #4da8ff;
+      --purple:   #a566ff;
+      --cyan:     #00d4ff;
+      --orange:   #ff7043;
+      --r:        8px;
+      --shadow:   0 4px 24px rgba(0,0,0,.6);
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      font-size: 13px;
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    /* ── Scrollbar ──────────────────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+    /* ── Nav ────────────────────────────────────────────────────────── */
+    #nav {
+      position: sticky; top: 0; z-index: 200;
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      padding: 0 20px;
+      height: 52px;
+      display: flex; align-items: center; gap: 12px;
+    }
+
+    .nav-brand {
+      font-size: 17px; font-weight: 700;
+      color: var(--cyan); letter-spacing: .4px;
+      margin-right: auto;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .nav-brand svg { flex-shrink: 0; }
+
+    .pulse-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--green); flex-shrink: 0;
+      box-shadow: 0 0 0 0 rgba(0,230,118,.6);
+      animation: ripple 2s infinite;
+    }
+    @keyframes ripple {
+      0%   { box-shadow: 0 0 0 0   rgba(0,230,118,.5); }
+      70%  { box-shadow: 0 0 0 8px rgba(0,230,118,0); }
+      100% { box-shadow: 0 0 0 0   rgba(0,230,118,0); }
+    }
+
+    /* ── Buttons ────────────────────────────────────────────────────── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 14px;
+      border: 1px solid var(--border2);
+      border-radius: 6px;
+      background: var(--bg3);
+      color: var(--text); cursor: pointer;
+      font-size: 12px; font-weight: 600;
+      transition: all .15s; white-space: nowrap;
+      user-select: none;
+    }
+    .btn:hover  { background: var(--bg4); border-color: var(--text2); }
+    .btn.go     { border-color: var(--green); color: var(--green); }
+    .btn.go:hover  { background: rgba(0,230,118,.1); }
+    .btn.halt   { border-color: var(--red); color: var(--red); }
+    .btn.halt:hover { background: rgba(255,69,96,.1); }
+    .btn.sm { padding: 4px 10px; font-size: 11px; }
+
+    /* ── Summary strip ──────────────────────────────────────────────── */
+    #summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 10px;
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .kpi {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 12px 14px;
+    }
+    .kpi .lbl {
+      font-size: 10px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .8px;
+      color: var(--text2); margin-bottom: 5px;
+    }
+    .kpi .val {
+      font-size: 22px; font-weight: 700;
+      color: var(--text); font-variant-numeric: tabular-nums;
+    }
+    .kpi .sub {
+      font-size: 10px; color: var(--text2); margin-top: 2px;
+    }
+    .kpi.g .val { color: var(--green); }
+    .kpi.c .val { color: var(--cyan);  }
+    .kpi.p .val { color: var(--purple);}
+    .kpi.y .val { color: var(--yellow);}
+    .kpi.o .val { color: var(--orange);}
+    .kpi.b .val { color: var(--blue);  }
+
+    /* ── Main split ─────────────────────────────────────────────────── */
+    #main {
+      display: flex;
+      gap: 0;
+      height: calc(100vh - 52px - 108px);  /* nav + summary */
+      min-height: 400px;
+    }
+
+    /* ── Table panel ────────────────────────────────────────────────── */
+    #panel-table {
+      flex: 1; overflow: auto;
+      border-right: 1px solid var(--border);
+    }
+
+    #toolbar {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg2);
+      position: sticky; top: 0; z-index: 10;
+    }
+    #toolbar h2 {
+      font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .7px;
+      color: var(--text2); margin-right: auto;
+    }
+    #refresh-txt { font-size: 10px; color: var(--text2); }
+
+    table { width: 100%; border-collapse: collapse; }
+
+    thead th {
+      position: sticky; top: 43px; z-index: 5;
+      background: var(--bg2);
+      padding: 8px 12px;
+      text-align: left;
+      font-size: 10px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .6px;
+      color: var(--text2);
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    tbody tr { border-bottom: 1px solid rgba(255,255,255,.04); transition: background .1s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: rgba(255,255,255,.025); }
+
+    td {
+      padding: 9px 12px;
+      vertical-align: middle;
+      white-space: nowrap;
+    }
+
+    /* ── Account cell ───────────────────────────────────────────────── */
+    .acct { display: flex; flex-direction: column; gap: 1px; }
+    .acct .name { font-weight: 600; color: var(--text); font-size: 13px; }
+    .acct .mail { font-size: 10px; color: var(--text2); }
+
+    /* ── Status badge ───────────────────────────────────────────────── */
+    .badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 2px 8px; border-radius: 20px;
+      font-size: 10px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .4px;
+      white-space: nowrap;
+    }
+    .badge .bd { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+
+    .bs-clicking  { background:rgba(0,230,118,.12); color:var(--green);  border:1px solid rgba(0,230,118,.25); }
+    .bs-clicking .bd  { background:var(--green);  animation:blink .9s infinite; }
+    .bs-stopped   { background:rgba(255,255,255,.05); color:var(--text2); border:1px solid var(--border); }
+    .bs-stopped .bd   { background:var(--text2); }
+    .bs-rate      { background:rgba(255,193,7,.12); color:var(--yellow); border:1px solid rgba(255,193,7,.25); }
+    .bs-rate .bd      { background:var(--yellow); animation:blink 1.5s infinite; }
+    .bs-error     { background:rgba(255,69,96,.12); color:var(--red);    border:1px solid rgba(255,69,96,.25); }
+    .bs-error .bd     { background:var(--red); }
+    .bs-starting  { background:rgba(77,168,255,.12); color:var(--blue);  border:1px solid rgba(77,168,255,.25); }
+    .bs-starting .bd  { background:var(--blue); animation:blink .5s infinite; }
+
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+    /* ── Progress bar ───────────────────────────────────────────────── */
+    .prog-wrap {
+      display: flex; align-items: center; gap: 8px;
+      min-width: 130px;
+    }
+    .prog-track {
+      flex: 1; height: 5px; background: var(--bg4); border-radius: 3px; overflow: hidden;
+    }
+    .prog-fill {
+      height: 100%; border-radius: 3px;
+      background: linear-gradient(90deg, var(--purple), var(--cyan));
+      transition: width .5s ease;
+    }
+    .prog-pct { font-size: 11px; color: var(--text2); min-width: 36px; text-align: right; font-variant-numeric: tabular-nums; }
+
+    /* ── Num / mono utils ───────────────────────────────────────────── */
+    .num  { font-variant-numeric: tabular-nums; }
+    .mono { font-family: monospace; }
+    .dim  { color: var(--text2); }
+    .g    { color: var(--green); }
+    .y    { color: var(--yellow); }
+    .p    { color: var(--purple); }
+    .c    { color: var(--cyan); }
+    .r    { color: var(--red); }
+
+    /* ── Side panel (log) ───────────────────────────────────────────── */
+    #panel-log {
+      width: 320px; flex-shrink: 0;
+      display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+
+    #panel-log .ph {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg2);
+      font-size: 10px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .7px;
+      color: var(--text2);
+    }
+
+    #log-scroll {
+      flex: 1; overflow-y: auto;
+    }
+
+    .log-row {
+      display: flex; flex-direction: column; gap: 2px;
+      padding: 7px 12px;
+      border-bottom: 1px solid rgba(255,255,255,.04);
+      font-size: 11px;
+    }
+    .log-row:last-child { border-bottom: none; }
+
+    .log-header { display: flex; gap: 8px; align-items: baseline; }
+    .log-ts  { font-family: monospace; color: var(--text2); font-size: 10px; flex-shrink: 0; }
+    .log-em  { color: var(--cyan); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+    .log-msg { color: var(--text); padding-left: 2px; }
+    .log-row.success .log-msg { color: var(--green); }
+    .log-row.error   .log-msg { color: var(--red);   }
+    .log-row.warn    .log-msg { color: var(--yellow); }
+
+    /* ── No-sessions screen ─────────────────────────────────────────── */
+    #no-sessions {
+      display: none;
+      padding: 80px 24px;
+      text-align: center;
+    }
+    #no-sessions h2 { font-size: 22px; color: var(--red); margin-bottom: 12px; }
+    #no-sessions p  { color: var(--text2); margin-bottom: 8px; }
+    #no-sessions code {
+      display: inline-block;
+      background: var(--bg3); border: 1px solid var(--border);
+      border-radius: 5px; padding: 6px 16px;
+      color: var(--yellow); font-size: 14px; font-family: monospace;
+    }
+
+    /* ── Toast ──────────────────────────────────────────────────────── */
+    #toast {
+      position: fixed; bottom: 20px; right: 20px;
+      background: var(--bg3); border: 1px solid var(--border2);
+      border-radius: var(--r);
+      padding: 10px 18px; font-size: 13px;
+      box-shadow: var(--shadow);
+      opacity: 0; pointer-events: none;
+      transition: opacity .25s;
+      z-index: 999;
+    }
+    #toast.show { opacity: 1; }
+
+    /* ── Responsive / misc ──────────────────────────────────────────── */
+    @media (max-width: 900px) {
+      #panel-log { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Nav ──────────────────────────────────────────────────────────────── -->
+<nav id="nav">
+  <div class="nav-brand">
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+      <path d="M10 2L12.5 7.5H18L13.5 11L15.5 17L10 13.5L4.5 17L6.5 11L2 7.5H7.5L10 2Z"
+            fill="var(--cyan)" opacity=".85"/>
+    </svg>
+    CaseBot
+    <span style="color:var(--text2);font-weight:400;font-size:12px;margin-left:2px">Dashboard</span>
+  </div>
+  <span class="pulse-dot" id="liveDot" title="Live — refreshing every 2s"></span>
+  <button class="btn" style="border-color:var(--yellow);color:var(--yellow)" onclick="openSetup()">&#9881; Login Setup</button>
+  <button class="btn go"  onclick="startAll()">&#9654; Start All</button>
+  <button class="btn halt" onclick="stopAll()">&#9632; Stop All</button>
+</nav>
+
+<!-- ── Summary KPIs ─────────────────────────────────────────────────────── -->
+<div id="summary">
+  <div class="kpi g"><div class="lbl">Running</div><div class="val" id="k-running">—</div><div class="sub" id="k-running-sub"></div></div>
+  <div class="kpi c"><div class="lbl">Total Clicks</div><div class="val" id="k-clicks">—</div><div class="sub" id="k-clicks-sub">this session</div></div>
+  <div class="kpi p"><div class="lbl">Cases Won</div><div class="val" id="k-cases">—</div><div class="sub" id="k-cases-sub">this session</div></div>
+  <div class="kpi y"><div class="lbl">Total Balance</div><div class="val" id="k-balance">—</div><div class="sub" id="k-balance-sub"></div></div>
+  <div class="kpi b"><div class="lbl">Avg CPS</div><div class="val" id="k-cps">—</div><div class="sub" id="k-cps-sub">clicks / sec</div></div>
+  <div class="kpi o"><div class="lbl">Avg Level</div><div class="val" id="k-level">—</div><div class="sub" id="k-level-sub"></div></div>
+</div>
+
+<!-- ── Main ──────────────────────────────────────────────────────────────── -->
+<div id="main">
+
+  <!-- Table panel -->
+  <div id="panel-table">
+    <div id="no-sessions" style="display:none;padding:100px 24px;text-align:center">
+      <div style="font-size:48px;margin-bottom:16px">&#128273;</div>
+      <h2 style="font-size:24px;margin-bottom:10px">No accounts logged in yet</h2>
+      <p style="color:var(--text2);margin-bottom:28px;font-size:14px">Click the button below to open a browser and log into all your accounts.<br>Cloudflare Turnstile will solve automatically &mdash; no action needed from you.</p>
+      <button class="btn" style="font-size:15px;padding:12px 32px;border-color:var(--cyan);color:var(--cyan);" onclick="openSetup()">
+        &#9881;&nbsp; Login Setup
+      </button>
+    </div>
+
+    <div id="tableWrap">
+      <div id="toolbar">
+        <h2>Accounts</h2>
+        <span id="refresh-txt"></span>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Account</th>
+            <th>Status</th>
+            <th>Balance</th>
+            <th>Lvl</th>
+            <th>Cases (session)</th>
+            <th>Case Progress</th>
+            <th>CPS</th>
+            <th>Clicks</th>
+            <th>Last Case</th>
+            <th>Uptime</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Log panel -->
+  <div id="panel-log">
+    <div class="ph">&#128221; Event Log</div>
+    <div id="log-scroll"></div>
+  </div>
+
+</div>
+
+<div id="toast"></div>
+
+<!-- ── Script ────────────────────────────────────────────────────────────── -->
+<script>
+"use strict";
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function esc(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function $ (id) { return document.getElementById(id); }
+
+function fmtNum(n, decimals = 0) {
+  if (n == null || isNaN(n)) return '—';
+  return Number(n).toLocaleString(undefined, {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
+}
+
+function fmtBig(n) {
+  if (n == null || isNaN(n)) return '—';
+  if (n >= 1e12) return (n / 1e12).toFixed(2) + 'T';
+  if (n >= 1e9)  return (n / 1e9).toFixed(2)  + 'B';
+  if (n >= 1e6)  return (n / 1e6).toFixed(2)  + 'M';
+  if (n >= 1e3)  return (n / 1e3).toFixed(1)  + 'K';
+  return fmtNum(n);
+}
+
+function fmtUptime(s) {
+  if (!s || s <= 0) return '—';
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const ss = s % 60;
+  if (h > 0)  return `${h}h ${m}m`;
+  if (m > 0)  return `${m}m ${ss}s`;
+  return `${ss}s`;
+}
+
+function statusClass(st) {
+  if (!st) return 'stopped';
+  const s = st.toLowerCase();
+  if (s.includes('clicking'))                 return 'clicking';
+  if (s.includes('rate'))                     return 'rate';
+  if (s.includes('start'))                    return 'starting';
+  if (s.includes('expired') || s.includes('re-login')) return 'error';
+  if (s.includes('error') || s.includes('network') || s.includes('stopped')) return 'error';
+  return 'stopped';
+}
+
+function capFirst(s) {
+  if (!s) return '';
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function showToast(msg, ms = 2500) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), ms);
+}
+
+// ── API calls ────────────────────────────────────────────────────────────────
+
+async function post(url, body = {}) {
+  try {
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    return await r.json();
+  } catch (e) {
+    console.error(url, e);
+    return { error: String(e) };
+  }
+}
+
+async function startAll() {
+  const res = await post('/api/start');
+  if (res.error) { showToast('⚠ ' + res.error); return; }
+  showToast(`▶ Starting ${res.started ? res.started.length : 0} account(s)…`);
+}
+
+async function stopAll() {
+  await post('/api/stop');
+  showToast('■ Stopping all accounts…');
+}
+
+async function toggleAccount(email, running) {
+  const url = running ? '/api/stop' : '/api/start';
+  const res = await post(url, { email });
+  if (res.error) showToast('⚠ ' + res.error);
+}
+
+// ── Render ───────────────────────────────────────────────────────────────────
+
+function renderSummary(accounts) {
+  const running  = accounts.filter(a => a.running);
+  const totalClicks  = accounts.reduce((s, a) => s + (a.clicks || 0), 0);
+  const totalCases   = accounts.reduce((s, a) => s + (a.cases_won || 0), 0);
+  const balances     = accounts.filter(a => a.balance != null).map(a => a.balance);
+  const totalBalance = balances.length ? balances.reduce((s, b) => s + b, 0) : null;
+  const runWithCps   = running.filter(a => a.cps > 0);
+  const avgCps       = runWithCps.length
+    ? (runWithCps.reduce((s, a) => s + a.cps, 0) / runWithCps.length).toFixed(1)
+    : null;
+  const levels       = accounts.filter(a => a.level != null).map(a => a.level);
+  const avgLevel     = levels.length
+    ? Math.round(levels.reduce((s, l) => s + l, 0) / levels.length)
+    : null;
+
+  $('k-running').textContent     = running.length;
+  $('k-running-sub').textContent = `of ${accounts.length} total`;
+  $('k-clicks').textContent      = fmtBig(totalClicks);
+  $('k-cases').textContent       = fmtNum(totalCases);
+  $('k-balance').textContent     = fmtBig(totalBalance);
+  $('k-cps').textContent         = avgCps != null ? avgCps : '—';
+  $('k-level').textContent       = avgLevel != null ? avgLevel : '—';
+}
+
+function renderTable(accounts) {
+  accounts.sort((a, b) => {
+    // Running first, then alphabetical
+    if (a.running !== b.running) return a.running ? -1 : 1;
+    return a.email.localeCompare(b.email);
+  });
+
+  let html = '';
+  accounts.forEach((acc, i) => {
+    const sc   = statusClass(acc.status);
+    const prog = Math.min(100, Math.max(0, acc.progress || 0));
+    const btnLabel = acc.running ? '&#9632; Stop' : '&#9654; Start';
+    const btnClass = acc.running ? 'btn sm halt' : 'btn sm go';
+    const errHtml  = acc.last_err
+      ? `<div style="font-size:9px;color:var(--red);margin-top:2px;max-width:150px;overflow:hidden;text-overflow:ellipsis">${esc(acc.last_err.slice(0, 50))}</div>`
+      : '';
+    const caseLabel = acc.last_case
+      ? `<span class="mono" style="font-size:11px">${esc(acc.last_case)}</span>`
+        + (acc.last_case_name ? `<div style="font-size:9px;color:var(--text2)">${esc(acc.last_case_name)}</div>` : '')
+      : '<span class="dim">—</span>';
+
+    html += `
+      <tr>
+        <td class="dim num" style="font-size:11px">${i + 1}</td>
+        <td>
+          <div class="acct">
+            <span class="name">${esc(acc.username || acc.email.split('@')[0])}</span>
+            <span class="mail">${esc(acc.email)}</span>
+          </div>
+        </td>
+        <td>
+          <div class="badge bs-${esc(sc)}"><span class="bd"></span>${esc(capFirst(acc.status || 'stopped'))}</div>
+          ${errHtml}
+        </td>
+        <td class="y num">${fmtBig(acc.balance)}</td>
+        <td class="dim num">${acc.level != null ? acc.level : '—'}</td>
+        <td class="p num">${fmtNum(acc.cases_won)}</td>
+        <td>
+          <div class="prog-wrap">
+            <div class="prog-track"><div class="prog-fill" style="width:${prog.toFixed(1)}%"></div></div>
+            <span class="prog-pct">${prog.toFixed(1)}%</span>
+          </div>
+        </td>
+        <td class="c num">${acc.cps > 0 ? acc.cps : '—'}</td>
+        <td class="num">${fmtBig(acc.clicks)}</td>
+        <td>${caseLabel}</td>
+        <td class="dim">${fmtUptime(acc.uptime_secs)}</td>
+        <td><button class="${btnClass}" onclick="toggleAccount('${esc(acc.email)}', ${acc.running})">${btnLabel}</button></td>
+      </tr>`;
+  });
+
+  $('tbody').innerHTML = html;
+}
+
+function renderLog(events) {
+  if (!events || !events.length) return;
+  const scroll = $('log-scroll');
+  let html = '';
+  events.forEach(e => {
+    html += `
+      <div class="log-row ${esc(e.level || 'info')}">
+        <div class="log-header">
+          <span class="log-ts">${esc(e.ts)}</span>
+          <span class="log-em">${esc(e.email)}</span>
+        </div>
+        <div class="log-msg">${esc(e.msg)}</div>
+      </div>`;
+  });
+  scroll.innerHTML = html;
+}
+
+// ── Poll loop ────────────────────────────────────────────────────────────────
+
+let firstLoad = true;
+
+async function refresh() {
+  try {
+    const [sRes, lRes] = await Promise.all([
+      fetch('/api/stats'),
+      fetch('/api/log'),
+    ]);
+    const accounts = await sRes.json();
+    const events   = await lRes.json();
+
+    if (!Array.isArray(accounts) || accounts.length === 0) {
+      $('no-sessions').style.display = 'block';
+      $('tableWrap').style.display   = 'none';
+    } else {
+      $('no-sessions').style.display = 'none';
+      $('tableWrap').style.display   = '';
+      renderSummary(accounts);
+      renderTable(accounts);
+    }
+
+    if (Array.isArray(events)) renderLog(events);
+
+    $('refresh-txt').textContent = 'Updated ' + new Date().toLocaleTimeString();
+
+    if (firstLoad) {
+      firstLoad = false;
+      $('liveDot').title = 'Live — refreshing every 2s';
+    }
+  } catch (e) {
+    console.error('Refresh failed:', e);
+  }
+}
+
+refresh();
+setInterval(refresh, 2000);
+
+// ── Setup modal ──────────────────────────────────────────────────────────────
+
+function openSetup() {
+  $('setup-modal').style.display = 'flex';
+}
+function closeSetup() {
+  if (!$('setup-start-btn').disabled) $('setup-modal').style.display = 'none';
+}
+
+let setupPolling = null;
+
+async function startSetup() {
+  const btn = $('setup-start-btn');
+  btn.disabled = true;
+  btn.textContent = 'Running…';
+  $('setup-log').textContent = 'Starting login browser…\n';
+  $('setup-progress-fill').style.width = '0%';
+  const res = await post('/api/setup/start');
+  if (res.error) {
+    $('setup-log').textContent += 'ERROR: ' + res.error;
+    btn.disabled = false;
+    btn.textContent = '▶ Start Login';
+    return;
+  }
+  setupPolling = setInterval(pollSetup, 1000);
+}
+
+async function pollSetup() {
+  try {
+    const r = await fetch('/api/setup/status');
+    const d = await r.json();
+    $('setup-log').textContent = (d.log || []).join('\n') || 'Working…';
+    $('setup-log').scrollTop = $('setup-log').scrollHeight;
+    const pct = d.total > 0 ? Math.round(d.done / d.total * 100) : 0;
+    $('setup-progress-fill').style.width = pct + '%';
+    if (!d.running) {
+      clearInterval(setupPolling);
+      $('setup-start-btn').disabled = false;
+      $('setup-start-btn').textContent = '▶ Start Login';
+      showToast('Login setup complete!');
+      refresh();
+    }
+  } catch (e) {}
+}
+</script>
+
+<!-- ── Setup modal ──────────────────────────────────────────────────────── -->
+<div id="setup-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:500;align-items:center;justify-content:center">
+  <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:12px;padding:30px 34px;max-width:500px;width:92%;box-shadow:var(--shadow)">
+    <h2 style="font-size:18px;margin-bottom:8px">&#128273; Account Login Setup</h2>
+    <p style="color:var(--text2);font-size:12px;margin-bottom:18px">Opens a browser window and logs into every account in <code style="color:var(--yellow);background:var(--bg3);padding:1px 6px;border-radius:4px;font-family:monospace">accounts.json</code>.<br>Cloudflare Turnstile solves automatically — just wait for it to finish.</p>
+    <div id="setup-log" style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px 12px;height:180px;overflow-y:auto;font-family:monospace;font-size:11px;color:var(--text2);white-space:pre-wrap">Ready. Click Start Login to begin.</div>
+    <div id="setup-progress" style="margin-top:10px;height:5px;background:var(--bg4);border-radius:3px;overflow:hidden">
+      <div id="setup-progress-fill" style="height:100%;background:linear-gradient(90deg,var(--purple),var(--cyan));width:0%;transition:width .4s"></div>
+    </div>
+    <div style="display:flex;gap:9px;margin-top:16px">
+      <button id="setup-start-btn" class="btn go" onclick="startSetup()">&#9654; Start Login</button>
+      <button class="btn" onclick="closeSetup()">Close</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
