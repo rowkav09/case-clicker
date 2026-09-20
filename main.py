@@ -2,54 +2,19 @@
 """
 main.py  —  Case Clicker Bot  (all-in-one)
 ==========================================
-Single entry point: auto-installs deps, runs login setup if needed,
-then launches the web dashboard.
+Single entry point for login setup and the web dashboard.
+Install dependencies before running it.
 
-Run:
+Install and run:
+    python -m pip install -r requirements.txt
+    python -m patchright install chromium
     python main.py
 
 Then open:
     http://localhost:5000
 """
 
-# ══════════════════════════════════════════════════════════════════════════════
-# STEP 1 — Auto-install missing packages
-# ══════════════════════════════════════════════════════════════════════════════
-import subprocess, sys, importlib, os
-
-def _ensure(package: str, import_as: str | None = None):
-    name = import_as or package.split("[")[0].replace("-", "_")
-    try:
-        importlib.import_module(name)
-    except ImportError:
-        print(f"[setup] Installing {package} …", flush=True)
-        subprocess.check_call(
-            [sys.executable, "-m", "pip", "install", package, "-q"],
-            stdout=subprocess.DEVNULL,
-        )
-
-_ensure("flask")
-_ensure("curl_cffi")
-_ensure("patchright")
-_ensure("websocket-client", "websocket")
-
-# Ensure Patchright Chromium binary is present (patches away all automation signals)
-try:
-    from patchright.sync_api import sync_playwright as _spw
-    with _spw() as _pw:
-        path = _pw.chromium.executable_path
-    if not os.path.exists(path):
-        raise FileNotFoundError
-except Exception:
-    print("[setup] Installing Patchright Chromium browser …", flush=True)
-    subprocess.check_call(
-        [sys.executable, "-m", "patchright", "install", "chromium"],
-    )
-
-# ══════════════════════════════════════════════════════════════════════════════
-# STEP 2 — Real imports (guaranteed available now)
-# ══════════════════════════════════════════════════════════════════════════════
-import json, time, threading, datetime, concurrent.futures, math, re, queue
+import json, time, threading, datetime, concurrent.futures, math, re, queue, os, sys
 from collections import deque
 
 from flask import Flask, render_template_string, jsonify, request
