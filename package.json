@@ -12,5 +12,8 @@
   "type": "commonjs",
   "dependencies": {
     "playwright": "^1.58.2"
+  },
+  "devDependencies": {
+    "ghost-deps": "^0.1.6"
   }
 }
